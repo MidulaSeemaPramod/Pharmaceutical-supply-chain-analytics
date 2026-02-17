@@ -327,9 +327,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Power BI community for visualization best practices
 
 ---
-
-**⭐ If you found this project helpful, please consider giving it a star!**
-
----
-
-*Built with ❤️ for pharmaceutical supply chain optimization*
