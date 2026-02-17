@@ -1,0 +1,596 @@
+!pip install faker pandas numpy -q
+
+import pandas as pd
+from faker import Faker
+from datetime import datetime, timedelta
+import random
+import numpy as np
+
+print("Starting Pharmaceutical Data Generation...")
+print("=" * 50)
+
+# Set up the fake data generator
+fake = Faker()
+random.seed(42)  # Makes the data reproducible
+np.random.seed(42)
+
+# ========================================
+# DEFINE PHARMACEUTICAL CATEGORIES
+
+therapeutic_categories = [
+    'Antibiotics - Injectable',
+    'Cardiovascular - Oral Tablets',
+    'Pain Management - Injectable',
+    'Oncology - Injectable',
+    'Diabetes - Injectable (Insulin)',
+    'Respiratory - Inhaled',
+    'Anesthetics - Injectable',
+    'Vaccines - Injectable'
+]
+
+# ========================================
+# DEFINE MANUFACTURERS BY REGION
+
+
+manufacturer_regions = {
+    'Ireland': [
+        'Cork Pharmaceutical Manufacturing Ltd',
+        'Dublin BioPharmaceuticals',
+        'Galway MedTech Solutions',
+        'Limerick Drug Manufacturing Co'
+    ],
+    'USA': [
+        'Boston Scientific Supply Inc',
+        'California Biologics Corporation',
+        'Texas Pharma Manufacturing',
+        'New Jersey Drug Co'
+    ],
+    'India': [
+        'Mumbai Generics Ltd',
+        'Bangalore Pharmaceutical Co',
+        'Hyderabad Drug Manufacturing',
+        'Delhi Biotech Solutions'
+    ],
+    'China': [
+        'Shanghai Medical Supply Co',
+        'Beijing Pharmaceutical Group',
+        'Shenzhen Drug Manufacturing',
+        'Guangzhou Biotech Ltd'
+    ],
+    'EU': [
+        'German Pharma AG',
+        'Swiss MedSupply GmbH',
+        'French Biologics SA',
+        'Italian Drug Manufacturing'
+    ]
+}
+
+# ========================================
+# DEFINE COMPLIANCE STANDARDS
+
+
+compliance_standards = [
+    'FDA Approved',
+    'EMA Certified',
+    'GDP Compliant',
+    'ISO 13485 Certified',
+    'GMP Certified',
+    'WHO Prequalified'
+]
+
+# ========================================
+# DEFINE RISK FACTORS
+
+
+risk_factors = [
+    'Single Source Supplier',
+    'Geopolitical Risk',
+    'Quality Audit Issues',
+    'Regulatory Approval Delays',
+    'Manufacturing Capacity Constraints',
+    'Raw Material Shortage',
+    'Transportation Delays'
+]
+
+# ========================================
+# GENERATE THE TRANSACTIONS
+# ========================================
+
+print("\n Generating 2,000 pharmaceutical transactions...")
+
+num_transactions = 2000
+data = []
+
+for i in range(num_transactions):
+    # Generate dates (orders from last 3 years)
+    order_date = fake.date_between(start_date='-3y', end_date='today')
+    delivery_date = order_date + timedelta(days=random.randint(7, 60))
+
+    # Select manufacturer and region
+    region = random.choice(list(manufacturer_regions.keys()))
+    manufacturer = random.choice(manufacturer_regions[region])
+
+    # Select therapeutic category
+    category = random.choice(therapeutic_categories)
+
+    # Generate pricing (pharma products are expensive)
+    unit_price = round(random.uniform(50, 5000), 2)
+    quantity = random.randint(100, 10000)  # Bulk orders
+    total_cost = round(unit_price * quantity, 2)
+
+    # Assign compliance certifications (2-4 per supplier)
+    num_compliances = random.randint(2, 4)
+    compliance_list = random.sample(compliance_standards, k=num_compliances)
+
+    # Assign risk factors (0-3 risk factors per transaction)
+    num_risks = random.choices([0, 1, 2, 3], weights=[30, 40, 20, 10])[0]
+    risk_list = random.sample(risk_factors, k=num_risks) if num_risks > 0 else []
+
+    # Determine shortage risk level
+    if num_risks >= 2:
+        shortage_risk = 'High'
+    elif num_risks == 1:
+        shortage_risk = 'Medium'
+    else:
+        shortage_risk = 'Low'
+
+    # Cold chain requirement (some drugs need refrigeration)
+    cold_chain_required = category in [
+        'Vaccines - Injectable',
+        'Oncology - Injectable',
+        'Diabetes - Injectable (Insulin)'
+    ]
+
+    # Calculate lead time
+    lead_time_days = (delivery_date - order_date).days
+
+    # Determine if delivery was on time (within 30 days)
+    expected_delivery = order_date + timedelta(days=30)
+    on_time_delivery = delivery_date <= expected_delivery
+
+    # Calculate potential savings (35% of transactions have savings)
+    savings_identified = 0
+    if random.random() < 0.35:
+        savings_identified = round(total_cost * random.uniform(0.05, 0.25), 2)
+
+    # Calculate realized savings (50-100% of identified savings)
+    savings_realized = 0
+    if savings_identified > 0:
+        realization_rate = random.uniform(0.5, 1.0)
+        savings_realized = round(savings_identified * realization_rate, 2)
+
+    # Contract number (75% of transactions have contracts)
+    contract_number = None
+    if random.random() < 0.75:
+        contract_number = f'PHR-CON-{fake.unique.random_int(min=1000, max=9999)}'
+
+    # Payment terms
+    payment_terms = random.choice([30, 60, 90])
+
+    # Create the transaction record
+    data.append({
+        'TransactionID': f'PHRX{i+1:05d}',
+        'OrderDate': order_date,
+        'DeliveryDate': delivery_date,
+        'Manufacturer': manufacturer,
+        'ManufacturerRegion': region,
+        'TherapeuticCategory': category,
+        'ProductDescription': f'{category.split("-")[0].strip()} Pharmaceutical Product',
+        'Quantity': quantity,
+        'UnitPrice': unit_price,
+        'TotalCost': total_cost,
+        'ComplianceStandards': ', '.join(compliance_list),
+        'RiskFactors': ', '.join(risk_list) if risk_list else 'None',
+        'ShortageRisk': shortage_risk,
+        'ColdChainRequired': cold_chain_required,
+        'LeadTimeDays': lead_time_days,
+        'OnTimeDelivery': on_time_delivery,
+        'SavingsIdentified': savings_identified,
+        'SavingsRealized': savings_realized,
+        'PaymentTermsDays': payment_terms,
+        'ContractNumber': contract_number
+    })
+
+    # Progress indicator (every 500 transactions)
+    if (i + 1) % 500 == 0:
+        print(f"  Generated {i+1} transactions...")
+
+# ========================================
+# CREATE DATAFRAME AND SUMMARY
+# ========================================
+
+print("\n Creating final dataset...")
+df = pd.DataFrame(data)
+
+# Print summary statistics
+print("\n" + "=" * 50)
+print("DATA GENERATION COMPLETE!")
+print("=" * 50)
+print(f"\n Dataset Summary:")
+print(f"   • Total Transactions: {len(df):,}")
+print(f"   • Date Range: {df['OrderDate'].min()} to {df['OrderDate'].max()}")
+print(f"   • Total Procurement Spend: ${df['TotalCost'].sum():,.2f}")
+print(f"   • Total Savings Realized: ${df['SavingsRealized'].sum():,.2f}")
+print(f"   • Number of Manufacturers: {df['Manufacturer'].nunique()}")
+print(f"   • Number of Regions: {df['ManufacturerRegion'].nunique()}")
+print(f"   • Number of Drug Categories: {df['TherapeuticCategory'].nunique()}")
+print(f"   • On-Time Delivery Rate: {df['OnTimeDelivery'].mean()*100:.1f}%")
+print(f"   • Average Lead Time: {df['LeadTimeDays'].mean():.1f} days")
+
+print("\n Breakdown by Region:")
+region_summary = df.groupby('ManufacturerRegion')['TotalCost'].sum().sort_values(ascending=False)
+for region, spend in region_summary.items():
+    print(f"   • {region}: ${spend:,.0f}")
+
+print("\n Breakdown by Therapeutic Category:")
+category_summary = df.groupby('TherapeuticCategory')['TotalCost'].sum().sort_values(ascending=False)
+for category, spend in category_summary.head(5).items():
+    print(f"   • {category}: ${spend:,.0f}")
+
+print("\n Risk Assessment:")
+print(f"   • High Risk Transactions: {(df['ShortageRisk'] == 'High').sum()}")
+print(f"   • Medium Risk Transactions: {(df['ShortageRisk'] == 'Medium').sum()}")
+print(f"   • Low Risk Transactions: {(df['ShortageRisk'] == 'Low').sum()}")
+
+print("\n Cold Chain Requirements:")
+print(f"   • Products Requiring Cold Chain: {df['ColdChainRequired'].sum():,}")
+print(f"   • Percentage: {df['ColdChainRequired'].mean()*100:.1f}%")
+
+# ========================================
+# SAVE TO CSV
+# ========================================
+
+print("\n Saving dataset...")
+filename = 'pharmaceutical_supply_chain_data.csv'
+df.to_csv(filename, index=False)
+print(f" Saved as: {filename}")
+
+# Show first few rows
+print("\n First 5 Transactions:")
+print(df.head().to_string())
+
+print("\n" + "=" * 50)
+print(" ALL DONE! Your pharmaceutical dataset is ready!")
+print("=" * 50)
+
+# Download the file
+try:
+    from google.colab import files
+    files.download(filename)
+    print(f"\n File '{filename}' is downloading")
+  
+except:
+    print(f"\n file saved but not auto-downloaded")
+    
+
+# ========================================
+# SUPPLIER RISK ASSESSMENT
+# ========================================
+
+import pandas as pd
+import numpy as np
+
+print("Analyzing Supplier Risk...")
+print("=" * 50)
+
+# Load the data we created earlier
+df = pd.read_csv('pharmaceutical_supply_chain_data.csv')
+
+# Get list of all suppliers
+suppliers = df['Manufacturer'].unique()
+print(f"\n Found {len(suppliers)} unique suppliers")
+
+# Analyze each supplier
+supplier_metrics = []
+
+for supplier in suppliers:
+    # Get all transactions for this supplier
+    supplier_data = df[df['Manufacturer'] == supplier]
+
+    # Calculate performance metrics
+    total_orders = len(supplier_data)
+    total_spend = supplier_data['TotalCost'].sum()
+    avg_lead_time = supplier_data['LeadTimeDays'].mean()
+    on_time_rate = supplier_data['OnTimeDelivery'].mean()
+    high_risk_count = (supplier_data['ShortageRisk'] == 'High').sum()
+
+    # Calculate risk scores (0-100, higher = riskier)
+
+    # Factor 1: Delivery Performance (40% of risk score)
+    delivery_risk = (1 - on_time_rate) * 0.6 + (avg_lead_time / 60) * 0.4
+    delivery_risk_score = delivery_risk * 100
+
+    # Factor 2: Shortage Incidents (30% of risk score)
+    shortage_risk_pct = high_risk_count / total_orders if total_orders > 0 else 0
+    shortage_risk_score = shortage_risk_pct * 100
+
+    # Factor 3: Product Concentration (20% of risk score)
+    categories = supplier_data['TherapeuticCategory'].nunique()
+    concentration_risk = 1 / categories if categories > 0 else 1
+    concentration_risk_score = concentration_risk * 100
+
+    # Factor 4: Financial Exposure (10% of risk score)
+    total_spend_all = df['TotalCost'].sum()
+    spend_concentration = total_spend / total_spend_all if total_spend_all > 0 else 0
+    financial_risk_score = spend_concentration * 100
+
+    # Combined Overall Risk Score (weighted average)
+    overall_risk_score = (
+        delivery_risk_score * 0.40 +
+        shortage_risk_score * 0.30 +
+        concentration_risk_score * 0.20 +
+        financial_risk_score * 0.10
+    )
+
+    # *** ADJUSTED RISK CLASSIFICATION THRESHOLDS ***
+    # Based on actual score distribution (typically 29-37 range)
+    if overall_risk_score >= 35:
+        risk_level = 'Critical'
+        recommendation = 'URGENT: Diversify supply, conduct quality audit, renegotiate terms'
+    elif overall_risk_score >= 33:
+        risk_level = 'High'
+        recommendation = 'Action needed: Increase monitoring, develop backup suppliers'
+    elif overall_risk_score >= 30:
+        risk_level = 'Medium'
+        recommendation = 'Monitor: Quarterly reviews, maintain contingency plans'
+    else:
+        risk_level = 'Low'
+        recommendation = 'Continue: Standard monitoring, good performance'
+
+    # Store results
+    supplier_metrics.append({
+        'Supplier': supplier,
+        'Region': supplier_data['ManufacturerRegion'].iloc[0],
+        'TotalOrders': total_orders,
+        'TotalSpend': round(total_spend, 2),
+        'AvgLeadTime': round(avg_lead_time, 1),
+        'OnTimeRate': round(on_time_rate * 100, 1),
+        'HighRiskIncidents': high_risk_count,
+        'DeliveryRiskScore': round(delivery_risk_score, 1),
+        'ShortageRiskScore': round(shortage_risk_score, 1),
+        'ConcentrationRiskScore': round(concentration_risk_score, 1),
+        'FinancialRiskScore': round(financial_risk_score, 1),
+        'OverallRiskScore': round(overall_risk_score, 1),  # *** MATCHES THE SORT ***
+        'RiskLevel': risk_level,
+        'Recommendation': recommendation
+    })
+
+# Create DataFrame
+df_risk = pd.DataFrame(supplier_metrics)
+
+df_risk = df_risk.sort_values('OverallRiskScore', ascending=False)
+
+# Print summary
+print("\n Risk Assessment Complete!")
+print(f"Critical Risk: {(df_risk['RiskLevel'] == 'Critical').sum()} suppliers")
+print(f"High Risk: {(df_risk['RiskLevel'] == 'High').sum()} suppliers")
+print(f"Medium Risk: {(df_risk['RiskLevel'] == 'Medium').sum()} suppliers")
+print(f"Low Risk: {(df_risk['RiskLevel'] == 'Low').sum()} suppliers")
+
+print("\n Top 10 Highest Risk Suppliers:")
+print(df_risk[['Supplier', 'Region', 'OverallRiskScore', 'RiskLevel']].head(10).to_string(index=False))
+
+# Save to CSV
+filename = 'supplier_risk_assessment.csv'
+df_risk.to_csv(filename, index=False)
+print(f"\n Saved as: {filename}")
+
+# Show distribution of risk scores
+print("\n Risk Score Distribution:")
+print(f"Highest: {df_risk['OverallRiskScore'].max():.1f}")
+print(f"Lowest: {df_risk['OverallRiskScore'].min():.1f}")
+print(f"Average: {df_risk['OverallRiskScore'].mean():.1f}")
+
+# Download
+try:
+    from google.colab import files
+    files.download(filename)
+    print(f"\n Downloading {filename}...")
+except:
+    print(f"\n File saved")
+
+print("\n Done!")
+
+
+# ========================================
+# MONTHLY PROCUREMENT SUMMARY
+# ========================================
+# This groups data by month for trend analysis
+
+import pandas as pd
+
+print("Creating Monthly Summary...")
+print("=" * 50)
+
+# Load data
+df = pd.read_csv('pharmaceutical_supply_chain_data.csv')
+
+# Convert OrderDate to datetime
+df['OrderDate'] = pd.to_datetime(df['OrderDate'])
+
+# Extract year-month
+df['OrderMonth'] = df['OrderDate'].dt.to_period('M')
+
+# Group by month and calculate totals
+monthly_summary = df.groupby('OrderMonth').agg({
+    'TransactionID': 'count',
+    'TotalCost': 'sum',
+    'SavingsRealized': 'sum',
+    'OnTimeDelivery': 'mean',
+    'LeadTimeDays': 'mean'
+}).reset_index()
+
+# Rename columns
+monthly_summary.columns = [
+    'Month',
+    'NumTransactions',
+    'TotalSpend',
+    'TotalSavings',
+    'OnTimeRate',
+    'AvgLeadTime'
+]
+
+# Convert Month back to string for CSV
+monthly_summary['Month'] = monthly_summary['Month'].astype(str)
+
+# Round numbers
+monthly_summary['TotalSpend'] = monthly_summary['TotalSpend'].round(2)
+monthly_summary['TotalSavings'] = monthly_summary['TotalSavings'].round(2)
+monthly_summary['OnTimeRate'] = (monthly_summary['OnTimeRate'] * 100).round(1)
+monthly_summary['AvgLeadTime'] = monthly_summary['AvgLeadTime'].round(1)
+
+# Print summary
+print(f"\n Created summary for {len(monthly_summary)} months")
+print(f"   From: {monthly_summary['Month'].min()}")
+print(f"   To: {monthly_summary['Month'].max()}")
+
+print("\n First 5 months:")
+print(monthly_summary.head().to_string())
+
+print("\n Last 5 months:")
+print(monthly_summary.tail().to_string())
+
+# Save to CSV
+filename = 'monthly_procurement_summary.csv'
+monthly_summary.to_csv(filename, index=False)
+print(f"\n Saved as: {filename}")
+
+# Download
+try:
+    from google.colab import files
+    files.download(filename)
+    print(f"Downloading {filename}...")
+except:
+    print(f"File saved")
+
+print("\n Done!")
+
+!pip install prophet scikit-learn matplotlib seaborn -q
+print("Forecasting tools installed!")
+
+# ========================================
+# PHARMACEUTICAL SPEND FORECASTING
+# ========================================
+# This predicts spending for the next 6 months
+
+from prophet import Prophet
+import pandas as pd
+import matplotlib.pyplot as plt
+import warnings
+warnings.filterwarnings('ignore')
+
+print("Building Spend Forecast Model...")
+print("=" * 50)
+
+# Load monthly data
+df_monthly = pd.read_csv('monthly_procurement_summary.csv')
+
+print(f"\n Loaded {len(df_monthly)} months of historical data")
+print(f"   From: {df_monthly['Month'].min()}")
+print(f"   To: {df_monthly['Month'].max()}")
+
+# Prepare data for Prophet
+# Prophet needs columns named 'ds' (date) and 'y' (value)
+forecast_data = df_monthly[['Month', 'TotalSpend']].copy()
+forecast_data.columns = ['ds', 'y']
+forecast_data['ds'] = pd.to_datetime(forecast_data['ds'])
+
+print("\n Training forecasting model...")
+
+# Create and train the model
+model = Prophet(
+    yearly_seasonality=True,
+    weekly_seasonality=False,
+    daily_seasonality=False,
+    changepoint_prior_scale=0.05
+)
+
+model.fit(forecast_data)
+
+# Make predictions for next 6 months
+print("\n Generating 6-month forecast...")
+future = model.make_future_dataframe(periods=6, freq='M')
+forecast = model.predict(future)
+
+# Get forecast results
+forecast_results = forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']].tail(6)
+forecast_results.columns = ['Month', 'Predicted_Spend', 'Lower_Bound', 'Upper_Bound']
+
+print("\n" + "=" * 50)
+print(" FORECAST COMPLETE!")
+print("=" * 50)
+
+print("\n Next 6 Months Predicted Spend:")
+print(forecast_results.to_string(index=False))
+
+# Calculate total predicted spend
+total_predicted = forecast_results['Predicted_Spend'].sum()
+print(f"\n Total Predicted Spend (next 6 months): ${total_predicted:,.2f}")
+
+# Calculate accuracy on historical data
+from sklearn.metrics import mean_absolute_percentage_error
+actual = forecast_data['y'].values
+predicted = forecast.iloc[:len(forecast_data)]['yhat'].values
+mape = mean_absolute_percentage_error(actual, predicted)
+accuracy = (1 - mape) * 100
+
+print(f"\n Model Accuracy: {accuracy:.1f}%")
+print(f"   (Based on historical data prediction)")
+
+# Create visualization
+print("\n Creating forecast chart...")
+
+fig, ax = plt.subplots(figsize=(12, 6))
+
+# Plot historical data
+ax.plot(forecast_data['ds'], forecast_data['y'],
+        'o-', color='#1f4e78', linewidth=2, markersize=5,
+        label='Historical Spend')
+
+# Plot forecast
+future_data = forecast.tail(6)
+ax.plot(future_data['ds'], future_data['yhat'],
+        'o-', color='#ff6b6b', linewidth=2, markersize=5,
+        label='Predicted Spend')
+
+# Plot confidence interval
+ax.fill_between(future_data['ds'],
+                future_data['yhat_lower'],
+                future_data['yhat_upper'],
+                alpha=0.2, color='#ff6b6b',
+                label='Confidence Interval')
+
+ax.set_xlabel('Date', fontsize=12)
+ax.set_ylabel('Total Spend ($)', fontsize=12)
+ax.set_title('Pharmaceutical Procurement - 6 Month Spend Forecast',
+             fontsize=14, fontweight='bold')
+ax.legend(fontsize=10)
+ax.grid(True, alpha=0.3)
+plt.tight_layout()
+
+# Save chart
+chart_filename = 'spend_forecast_chart.png'
+plt.savefig(chart_filename, dpi=300, bbox_inches='tight')
+print(f"Saved chart: {chart_filename}")
+
+# Save forecast data
+csv_filename = 'spend_forecast_6months.csv'
+forecast_results.to_csv(csv_filename, index=False)
+print(f" Saved data: {csv_filename}")
+
+# Download files
+try:
+    from google.colab import files
+    files.download(chart_filename)
+    files.download(csv_filename)
+    print(f"\n Downloading files...")
+except:
+    print(f"\n Files saved - find them in Files panel")
+
+print("\n" + "=" * 50)
+print(" FORECASTING COMPLETE")
+print("=" * 50)
+print("  1. 6-month spend prediction")
+print("  2. Confidence intervals (best/worst case)")
+print("  3. Professional forecast chart")
+print("  4. Model accuracy metrics")
